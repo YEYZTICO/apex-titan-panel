@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>APEX TITAN · Admin Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #050808;
+    --bg-2: #0a0f0d;
+    --panel: rgba(10, 18, 14, 0.72);
+    --panel-hi: rgba(20, 32, 26, 0.88);
+    --border: rgba(61, 255, 157, 0.14);
+    --border-hi: rgba(61, 255, 157, 0.38);
+    --ink: #c9f5d9;
+    --ink-2: rgba(201, 245, 217, 0.62);
+    --ink-3: rgba(201, 245, 217, 0.34);
+    --ink-4: rgba(201, 245, 217, 0.16);
+    --neon: #3dff9d;
+    --neon-hi: #7dffb8;
+    --neon-glow: rgba(61, 255, 157, 0.58);
+    --amber: #ffb547;
+    --danger: #ff4d6a;
+    --danger-glow: rgba(255, 77, 106, 0.44);
+    --purple: #b080ff;
+  }
+
+  html, body {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "ss01" on, "cv05" on;
+  }
+
+  /* Grid background + scanlines */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(61, 255, 157, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(61, 255, 157, 0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 1;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(61, 255, 157, 0.08), transparent 60%),
+                radial-gradient(ellipse at 100% 100%, rgba(176, 128, 255, 0.05), transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .stage { position: relative; z-index: 2; min-height: 100vh; padding: 20px; max-width: 1600px; margin: 0 auto; }
+  @media (min-width: 768px) { .stage { padding: 28px; } }
+
+  /* Header */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--neon), #18c97a 80%); display: grid; place-items: center; box-shadow: 0 0 22px var(--neon-glow), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .brand-mark svg { width: 22px; height: 22px; }
+  .brand h1 { font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(22px, 4vw, 30px); font-weight: 800; letter-spacing: -0.02em; color: var(--neon); text-shadow: 0 0 18px rgba(61, 255, 157, 0.42); }
+  .brand .sub { color: var(--ink-3); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; }
+
+  .live-chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(61, 255, 157, 0.1); border: 1px solid var(--border-hi); border-radius: 999px; padding: 7px 14px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--neon); }
+  .live-dot { width: 8px; height: 8px; background: var(--neon); border-radius: 50%; box-shadow: 0 0 14px var(--neon); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(1.35); } }
+
+  /* Login screen */
+  .login-wrap { min-height: 100vh; display: grid; place-items: center; position: relative; z-index: 2; padding: 24px; }
+  .login-card {
+    background: var(--panel);
+    border: 1px solid var(--border-hi);
+    border-radius: 20px;
+    padding: 44px 32px;
+    max-width: 420px;
+    width: 100%;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 80px rgba(61, 255, 157, 0.08), inset 0 1px 0 rgba(255,255,255,0.04);
+    position: relative;
+  }
+  .login-card::before {
+    content: ""; position: absolute; inset: -1px; border-radius: 20px; padding: 1px;
+    background: linear-gradient(135deg, rgba(61, 255, 157, 0.45), transparent 40%, transparent 60%, rgba(61, 255, 157, 0.25));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events: none; opacity: 0.7;
+  }
+  .login-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; justify-content: center; }
+  .login-brand h1 { font-family: 'Bricolage Grotesque'; color: var(--neon); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; text-shadow: 0 0 24px rgba(61,255,157,0.4); }
+  .login-brand .mark { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--neon), #18c97a 80%); display: grid; place-items: center; box-shadow: 0 0 32px var(--neon-glow), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .login-brand .mark svg { width: 26px; height: 26px; }
+
+  .login-title { font-family: 'Bricolage Grotesque'; font-size: 22px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .login-title .lock { width: 22px; height: 22px; }
+  .login-sub { color: var(--ink-2); font-size: 12px; margin-bottom: 26px; }
+
+  .field-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; margin-bottom: 8px; display: block; }
+  .field {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    outline: none;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .field:focus { border-color: var(--neon); box-shadow: 0 0 0 3px rgba(61, 255, 157, 0.14), 0 0 24px rgba(61, 255, 157, 0.22); }
+  .field::placeholder { color: var(--ink-4); }
+
+  .btn {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary { background: linear-gradient(180deg, var(--neon), #18c97a 110%); color: #02120a; box-shadow: 0 6px 22px rgba(61, 255, 157, 0.38), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(61, 255, 157, 0.5), inset 0 1px 0 rgba(255,255,255,0.35); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-danger { background: linear-gradient(180deg, var(--danger), #d9334f 110%); color: #fff; box-shadow: 0 6px 22px rgba(255, 77, 106, 0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
+  .btn-danger:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(255, 77, 106, 0.5); }
+
+  .btn-ghost { background: transparent; border: 1px solid var(--border-hi); color: var(--ink); }
+  .btn-ghost:hover { background: rgba(61, 255, 157, 0.06); border-color: var(--neon); }
+
+  .err { background: rgba(255, 77, 106, 0.08); border: 1px solid rgba(255, 77, 106, 0.3); color: #ff8fa3; padding: 10px 14px; border-radius: 10px; font-size: 12px; margin-top: 14px; }
+
+  /* Section labels */
+  .sec-label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .sec-label::before { content: "//"; color: var(--neon); }
+
+  /* Panel */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 4px 24px rgba(0,0,0,0.36);
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .panel-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .panel-title h2 { font-family: 'Bricolage Grotesque'; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+  .panel-title h2::before { content: "//"; color: var(--ink-3); font-weight: 400; }
+  .pill { background: rgba(61, 255, 157, 0.1); color: var(--neon); padding: 3px 10px; border-radius: 999px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--border); }
+  .pill-red { background: rgba(255, 77, 106, 0.12); color: var(--danger); border-color: rgba(255, 77, 106, 0.3); }
+  .pill-amber { background: rgba(255, 181, 71, 0.12); color: var(--amber); border-color: rgba(255, 181, 71, 0.3); }
+  .pill-violet { background: rgba(176, 128, 255, 0.1); color: var(--purple); border-color: rgba(176, 128, 255, 0.3); }
+
+  /* Stat grid */
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (min-width: 768px) { .stat-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
+  .stat {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    transition: all 0.2s;
+  }
+  .stat:hover { border-color: var(--border-hi); background: rgba(61,255,157,0.04); }
+  .stat .lab { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; margin-bottom: 6px; }
+  .stat .val { font-family: 'Bricolage Grotesque'; font-size: clamp(22px, 4vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .stat .val.neon { color: var(--neon); text-shadow: 0 0 16px rgba(61,255,157,0.32); }
+  .stat .val.danger { color: var(--danger); }
+  .stat .val.amber { color: var(--amber); }
+  .stat .sub { font-size: 10.5px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.04em; }
+
+  /* Global control buttons */
+  .control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 520px) { .control-row { grid-template-columns: 1fr; } }
+  .ctrl-btn {
+    padding: 16px 20px;
+    border-radius: 14px;
+    font-family: 'JetBrains Mono'; font-weight: 700;
+    font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+    border: 1px solid; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .ctrl-start { background: rgba(61,255,157,0.08); border-color: var(--border-hi); color: var(--neon); }
+  .ctrl-start:hover { background: rgba(61,255,157,0.16); box-shadow: 0 0 24px rgba(61,255,157,0.28); }
+  .ctrl-stop { background: rgba(255,77,106,0.08); border-color: rgba(255,77,106,0.28); color: var(--danger); }
+  .ctrl-stop:hover { background: rgba(255,77,106,0.16); box-shadow: 0 0 24px rgba(255,77,106,0.28); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; border: 1px solid var(--border); width: fit-content; margin-bottom: 14px; }
+  .tab { padding: 8px 16px; background: transparent; border: none; color: var(--ink-2); font-family: 'JetBrains Mono'; font-weight: 600; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+  .tab.on { background: rgba(61,255,157,0.12); color: var(--neon); }
+  .tab:hover:not(.on) { color: var(--ink); }
+
+  /* Trade rows */
+  .tr-list { display: flex; flex-direction: column; gap: 6px; }
+  .tr-empty { text-align: center; color: var(--ink-3); padding: 30px; font-size: 12px; letter-spacing: 0.05em; }
+  .tr {
+    display: grid;
+    grid-template-columns: 60px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.24);
+    border-radius: 10px;
+    border-left: 2px solid var(--ink-4);
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .tr:hover { background: rgba(0,0,0,0.4); }
+  .tr.win { border-left-color: var(--neon); }
+  .tr.loss { border-left-color: var(--danger); }
+  .tr-user { color: var(--ink-2); font-weight: 600; letter-spacing: 0.06em; }
+  .tr-sym { color: var(--ink); font-weight: 700; }
+  .tr-side { font-size: 10px; letter-spacing: 0.08em; color: var(--ink-3); text-transform: uppercase; }
+  .tr-pnl { font-weight: 700; font-family: 'Bricolage Grotesque'; font-size: 14px; }
+  .tr-pnl.up { color: var(--neon); }
+  .tr-pnl.down { color: var(--danger); }
+  .tr-time { color: var(--ink-3); font-size: 10px; letter-spacing: 0.04em; }
+
+  /* User list */
+  .users { display: flex; flex-direction: column; gap: 4px; }
+  .user-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 14px;
+    background: rgba(0,0,0,0.24);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .user-row:hover { border-color: var(--border-hi); background: rgba(61, 255, 157, 0.03); }
+  .user-row.online .status-dot { background: var(--neon); box-shadow: 0 0 10px var(--neon); }
+  .user-row.offline .status-dot { background: var(--ink-4); }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .user-info { min-width: 0; }
+  .user-name { font-weight: 700; letter-spacing: 0.08em; color: var(--ink); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .user-name .play { color: var(--neon); font-size: 10px; }
+  .user-name.paused .play { color: var(--amber); }
+  .user-meta { font-size: 10.5px; color: var(--ink-3); margin-top: 3px; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .user-stats { text-align: right; }
+  .user-balance { font-family: 'Bricolage Grotesque'; font-size: 16px; font-weight: 800; color: var(--neon); }
+  .user-wr { font-size: 10px; color: var(--ink-3); margin-top: 3px; letter-spacing: 0.03em; }
+
+  /* User detail modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 999; display: none; align-items: flex-end; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  @media (min-width: 768px) { .modal-backdrop { align-items: center; } }
+  .modal {
+    background: var(--bg-2);
+    border: 1px solid var(--border-hi);
+    border-radius: 18px 18px 0 0;
+    padding: 26px 22px;
+    max-width: 620px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 -24px 60px rgba(0,0,0,0.7), 0 0 80px rgba(61, 255, 157, 0.12);
+  }
+  @media (min-width: 768px) { .modal { border-radius: 18px; } }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .modal-close { background: transparent; border: none; color: var(--ink-3); cursor: pointer; padding: 6px; border-radius: 8px; }
+  .modal-close:hover { color: var(--ink); background: rgba(61,255,157,0.06); }
+
+  .strat-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .strat-pill {
+    padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--border-hi);
+    background: rgba(61,255,157,0.1);
+    color: var(--neon);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .strat-pill:hover { background: rgba(61,255,157,0.2); }
+  .strat-pill.off { background: rgba(255,181,71,0.08); color: var(--amber); border-color: rgba(255,181,71,0.3); }
+
+  /* Server panel */
+  .server-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 12px; }
+  .server-row .k { color: var(--ink-3); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; min-width: 110px; }
+  .server-row .v { color: var(--ink); font-weight: 600; }
+  .server-row .v.neon { color: var(--neon); }
+
+  /* Auto-update */
+  .update-area { display: grid; gap: 14px; }
+  .file-drop {
+    border: 1.5px dashed var(--border-hi);
+    border-radius: 14px;
+    padding: 28px 20px;
+    text-align: center;
+    background: rgba(0,0,0,0.24);
+    cursor: pointer; transition: all 0.2s;
+    position: relative;
+  }
+  .file-drop:hover, .file-drop.over { border-color: var(--neon); background: rgba(61, 255, 157, 0.06); }
+  .file-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-drop .icon { font-size: 28px; margin-bottom: 10px; color: var(--neon); }
+  .file-drop .txt { font-size: 12px; color: var(--ink-2); letter-spacing: 0.03em; }
+  .file-drop .sub { font-size: 10.5px; color: var(--ink-3); margin-top: 4px; letter-spacing: 0.05em; }
+  .file-picked { color: var(--neon); font-weight: 700; }
+
+  /* Toast */
+  .toasts { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+  .toast {
+    background: var(--bg-2);
+    border: 1px solid var(--border-hi);
+    border-radius: 12px;
+    padding: 12px 18px;
+    color: var(--ink);
+    font-size: 12px; font-weight: 600;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6), 0 0 24px rgba(61,255,157,0.2);
+    letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 10px;
+    transform: translateY(10px); opacity: 0;
+    animation: toastIn 0.2s forwards;
+  }
+  @keyframes toastIn { to { transform: translateY(0); opacity: 1; } }
+  .toast.error { border-color: rgba(255,77,106,0.5); color: #ffb0bd; }
+  .toast.ok::before { content: "✓"; color: var(--neon); font-weight: 800; }
+
+  /* User chip top-right */
+  .me-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    padding: 6px 10px 6px 6px;
+    border-radius: 999px;
+    font-size: 11px; color: var(--ink-2);
+  }
+  .me-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--neon), #18c97a); color: #02120a; display: grid; place-items: center; font-weight: 800; font-size: 10px; letter-spacing: 0.04em; }
+  .me-chip button { background: transparent; border: none; color: var(--ink-3); cursor: pointer; margin-left: 4px; padding: 4px; }
+  .me-chip button:hover { color: var(--danger); }
+
+  /* Footer */
+  .footer { text-align: center; color: var(--ink-4); font-size: 10.5px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); letter-spacing: 0.1em; }
+
+  /* Loading spinner */
+  .spin { width: 14px; height: 14px; border: 2px solid var(--ink-4); border-top-color: var(--neon); border-radius: 50%; animation: rot 0.8s linear infinite; display: inline-block; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="#02120a" stroke-linejoin="round"/></svg></div>
+      <h1>APEX TITAN</h1>
+    </div>
+    <div class="login-title">
+      <svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Acceso Admin
+    </div>
+    <div class="login-sub">Ingresá tus credenciales para continuar</div>
+
+    <label class="field-label">Email</label>
+    <input type="email" class="field" id="login-email" placeholder="admin@apex.com" autocomplete="email" style="margin-bottom: 16px;">
+
+    <label class="field-label">Password</label>
+    <input type="password" class="field" id="login-pass" placeholder="••••••••••" autocomplete="current-password" style="margin-bottom: 20px;">
+
+    <div id="login-err" class="err" style="display:none; margin-top:0; margin-bottom:14px;"></div>
+
+    <button class="btn btn-primary" id="btn-login">
+      <span id="login-btn-txt">Ingresar →</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP (hidden until login)
+     ============================================================ -->
+<div class="stage" id="app" style="display:none;">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="#02120a" stroke-linejoin="round"/></svg></div>
+      <div>
+        <h1>APEX TITAN</h1>
+        <div class="sub">Admin Control · v1.0</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span class="live-chip"><span class="live-dot"></span> Live</span>
+      <div class="me-chip" id="meChip" style="display:none;">
+        <div class="me-avatar" id="meAvatar">KW</div>
+        <span id="meName">—</span>
+        <button onclick="doLogout()" title="Cerrar sesión">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard en vivo -->
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Dashboard en vivo</h2>
+      <button class="btn-ghost btn" style="width:auto; padding:8px 14px; font-size:10px;" onclick="refreshAll()">↻ Actualizar</button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="lab">Usuarios online</div>
+        <div class="val neon" id="st-online">0</div>
+        <div class="sub">de <span id="st-total">0</span> total</div>
+      </div>
+      <div class="stat">
+        <div class="lab">Bot global</div>
+        <div class="val amber" id="st-botstate">—</div>
+        <div class="sub" id="st-botsub">estado general</div>
+      </div>
+      <div class="stat">
+        <div class="lab">P&L total</div>
+        <div class="val neon" id="st-pnl">$0.00</div>
+        <div class="sub" id="st-pnlsub">hoy acumulado</div>
+      </div>
+      <div class="stat">
+        <div class="lab">Capital gestionado</div>
+        <div class="val" id="st-capital" style="color:var(--ink);">$0.00</div>
+        <div class="sub">balance agregado</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Control global -->
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Control global</h2>
+      <span class="pill pill-red">Admin only</span>
+    </div>
+    <div class="control-row">
+      <button class="ctrl-btn ctrl-start" onclick="controlAll('resume')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Iniciar todos
+      </button>
+      <button class="ctrl-btn ctrl-stop" onclick="controlAll('kill')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h4v12H6zM14 6h4v12h-4z"/></svg>
+        Detener todos
+      </button>
+    </div>
+  </div>
+
+  <!-- Trades en vivo -->
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Trades en vivo</h2>
+      <span class="pill" id="tr-count">0</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="all">Todos</button>
+      <button class="tab" data-tab="wins">Wins</button>
+      <button class="tab" data-tab="loss">Losses</button>
+      <button class="tab" data-tab="open">Abiertos</button>
+    </div>
+    <div class="tr-list" id="trList">
+      <div class="tr-empty">Sin trades aún.</div>
+    </div>
+  </div>
+
+  <!-- Usuarios -->
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Usuarios</h2>
+      <span class="pill" id="us-count">0</span>
+    </div>
+    <div class="users" id="userList">
+      <div class="tr-empty">Cargando usuarios…</div>
+    </div>
+  </div>
+
+  <!-- Servidor -->
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Servidor</h2>
+      <span class="pill" id="srv-status">● Online</span>
+    </div>
+    <div class="server-row"><span class="k">Supabase</span><span class="v neon" id="srv-supa">Online</span></div>
+    <div class="server-row"><span class="k">Proyecto</span><span class="v">apex-titan</span></div>
+    <div class="server-row"><span class="k">Bot global</span><span class="v" id="srv-botglobal">—</span></div>
+    <div class="server-row"><span class="k">Online</span><span class="v" id="srv-online">0/0</span></div>
+    <div class="server-row"><span class="k">Última ver.</span><span class="v" id="srv-lastver">—</span></div>
+  </div>
+
+  <!-- Auto-update -->
+  <div class="panel">
+    <div class="panel-title">
+      <h2>Auto-update bot</h2>
+      <span class="pill pill-violet" id="curr-ver">v—</span>
+    </div>
+    <div class="update-area">
+      <div>
+        <label class="field-label">Nueva versión (ej: 13.1.0)</label>
+        <input type="text" class="field" id="up-ver" placeholder="13.1.0" pattern="\d+\.\d+\.\d+">
+      </div>
+      <div>
+        <label class="field-label">Release notes (opcional)</label>
+        <textarea class="field" id="up-notes" rows="2" placeholder="Qué cambia en esta versión…" style="resize:vertical; min-height:60px;"></textarea>
+      </div>
+      <div>
+        <label class="field-label">Archivos (ZIP recomendado · hasta 50 MB)</label>
+        <div class="file-drop" id="fileDrop">
+          <input type="file" id="up-file" accept=".zip,.py,.html" />
+          <div class="icon">⬆</div>
+          <div class="txt" id="fileDropTxt">Soltá un archivo aquí o hacé click</div>
+          <div class="sub">ZIP con main.py, web_server.py, server_client.py, static/index.html…</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-upload" onclick="uploadUpdate()">
+        <span id="upload-btn-txt">↑ Subir update</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="footer">
+    APEX TITAN · Admin Control v1.0 · Supabase backend · Última actualización: <span id="lastUpdate">—</span>
+  </div>
+</div>
+
+<!-- User detail modal -->
+<div class="modal-backdrop" id="userModal" onclick="if(event.target===this) closeUserModal()">
+  <div class="modal" id="userModalContent">
+    <!-- filled dinamically -->
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toasts" id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  'use strict';
+
+  // ===== CONFIG =====
+  const SUPABASE_URL  = 'https://cohmuxymzmelybdneosx.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvaG11eHltem1lbHliZG5lb3N4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njc0NDgsImV4cCI6MjA5MjQ0MzQ0OH0.DGmpjnKhlFiVq6vg5VO-sOtpJHYUusF96AlPlotPSX0';
+
+  let supa = null;
+  let currentUser = null;
+  let users = [];            // all user profiles
+  let states = {};           // user_state keyed by user_id
+  let trades = [];           // recent closed trades across users
+  let currentTab = 'all';
+  let pendingFile = null;
+
+  // ===== HELPERS =====
+  const $ = id => document.getElementById(id);
+  function fmt$(n){ if (n==null || isNaN(n)) return '$0.00'; const v = +n; return (v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtPct(n){ if (n==null||isNaN(n)) return '0%'; return (n>=0?'+':'')+Number(n).toFixed(2)+'%'; }
+  function initials(name, email){
+    const src = name || email || '?';
+    const p = src.split(/[\s@._-]+/);
+    return ((p[0]||'?')[0] + (p[1]?.[0]||'')).toUpperCase().slice(0,2);
+  }
+  function userCode(email){
+    if (!email) return '????';
+    const local = email.split('@')[0].replace(/[^a-zA-Z]/g,'').toUpperCase();
+    return (local.slice(0,4) || 'USER').padEnd(4, 'X');
+  }
+  function timeAgo(iso){
+    if (!iso) return 'nunca';
+    const s = Math.floor((Date.now() - new Date(iso).getTime())/1000);
+    if (s<60) return s+'s';
+    if (s<3600) return Math.floor(s/60)+'m';
+    if (s<86400) return Math.floor(s/3600)+'h';
+    return Math.floor(s/86400)+'d';
+  }
+  function isOnline(iso){ return iso && (Date.now()-new Date(iso).getTime())<90*1000; }
+  function toast(msg, type){
+    const c = $('toasts');
+    const t = document.createElement('div');
+    t.className = 'toast '+(type||'ok');
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(10px)'; setTimeout(()=>t.remove(),300); }, 3500);
+  }
+
+  // ===== AUTH =====
+  async function init(){
+    if (typeof supabase === 'undefined') { toast('Supabase no cargó', 'error'); return; }
+    supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: true, storageKey: 'apex_admin_panel' } });
+    const { data: { session } } = await supa.auth.getSession();
+    if (session) await onLogin(session.user);
+
+    supa.auth.onAuthStateChange(async (event, sess) => {
+      if (event === 'SIGNED_IN' && sess) await onLogin(sess.user);
+      if (event === 'SIGNED_OUT') onSignOut();
+    });
+  }
+
+  async function doLogin(){
+    const email = $('login-email').value.trim();
+    const pass = $('login-pass').value;
+    const err = $('login-err');
+    err.style.display = 'none';
+    if (!email || !pass) { err.textContent='Completá email y password'; err.style.display='block'; return; }
+
+    $('login-btn-txt').innerHTML = '<span class="spin"></span> Conectando…';
+    $('btn-login').disabled = true;
+    try {
+      const { error } = await supa.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+    } catch (e) {
+      err.textContent = 'Error: ' + (e.message || 'login falló');
+      err.style.display = 'block';
+    } finally {
+      $('login-btn-txt').textContent = 'Ingresar →';
+      $('btn-login').disabled = false;
+    }
+  }
+
+  async function onLogin(user){
+    const { data: profile, error } = await supa.from('users').select('is_admin, full_name, email').eq('id', user.id).single();
+    if (error || !profile) { toast('Perfil no encontrado', 'error'); return; }
+    if (!profile.is_admin) {
+      toast('No tenés permisos de admin', 'error');
+      await supa.auth.signOut();
+      return;
+    }
+    currentUser = { ...user, ...profile };
+    $('loginScreen').style.display = 'none';
+    $('app').style.display = '';
+    $('meChip').style.display = '';
+    $('meName').textContent = profile.full_name || profile.email.split('@')[0];
+    $('meAvatar').textContent = initials(profile.full_name, profile.email);
+    refreshAll();
+    setInterval(refreshAll, 12000);
+  }
+
+  function onSignOut(){
+    currentUser = null;
+    $('loginScreen').style.display = '';
+    $('app').style.display = 'none';
+    $('meChip').style.display = 'none';
+    $('login-email').value = '';
+    $('login-pass').value = '';
+  }
+  window.doLogout = async function(){
+    if (!confirm('¿Cerrar sesión?')) return;
+    await supa.auth.signOut();
+  };
+
+  // ===== DATA =====
+  async function refreshAll(){
+    if (!currentUser) return;
+    try {
+      const [ur, sr, tr, vr] = await Promise.all([
+        supa.from('users').select('*').eq('is_active', true),
+        supa.from('user_state').select('*'),
+        supa.from('trades_closed').select('*').order('closed_at', { ascending: false }).limit(40),
+        supa.from('bot_updates').select('*').order('created_at', { ascending: false }).limit(1),
+      ]);
+      users = ur.data || [];
+      states = {};
+      (sr.data||[]).forEach(s => states[s.user_id] = s);
+      trades = tr.data || [];
+      renderStats();
+      renderTrades();
+      renderUsers();
+      renderServer(vr.data?.[0]);
+      $('lastUpdate').textContent = new Date().toLocaleTimeString();
+    } catch (e) {
+      toast('Error refrescando: ' + e.message, 'error');
+    }
+  }
+
+  function renderStats(){
+    const total = users.length;
+    const online = users.filter(u => isOnline(states[u.id]?.last_heartbeat_at)).length;
+    const killed = users.filter(u => states[u.id]?.kill_switch_active).length;
+    const pnl = Object.values(states).reduce((a, s) => a + (+s.daily_pnl || 0), 0);
+    const cap = Object.values(states).reduce((a, s) => a + (+s.balance || 0), 0);
+
+    $('st-online').textContent = online;
+    $('st-total').textContent = total;
+    $('st-pnl').textContent = fmt$(pnl);
+    $('st-pnl').style.color = pnl >= 0 ? 'var(--neon)' : 'var(--danger)';
+    $('st-capital').textContent = fmt$(cap);
+
+    const botState = killed > 0 && killed === total ? 'OFF' : (killed > 0 ? 'MIXED' : 'RUN');
+    $('st-botstate').textContent = botState;
+    $('st-botstate').style.color = botState === 'OFF' ? 'var(--danger)' : (botState === 'MIXED' ? 'var(--amber)' : 'var(--neon)');
+    $('st-botsub').textContent = botState === 'OFF' ? 'todo detenido' : (botState === 'MIXED' ? `${total - killed} activos` : 'operando');
+  }
+
+  function renderTrades(){
+    const filtered = trades.filter(t => {
+      if (currentTab === 'wins') return (+t.pnl||0) > 0;
+      if (currentTab === 'loss') return (+t.pnl||0) < 0;
+      if (currentTab === 'open') return !t.closed_at;
+      return true;
+    }).slice(0, 20);
+
+    $('tr-count').textContent = filtered.length;
+
+    const list = $('trList');
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="tr-empty">Sin trades que mostrar.</div>';
+      return;
+    }
+    list.innerHTML = filtered.map(t => {
+      const u = users.find(x => x.id === t.user_id);
+      const code = userCode(u?.email || '');
+      const pnl = +t.pnl || 0;
+      const cls = pnl > 0 ? 'win' : (pnl < 0 ? 'loss' : '');
+      const pnlCls = pnl > 0 ? 'up' : (pnl < 0 ? 'down' : '');
+      return `<div class="tr ${cls}">
+        <div class="tr-user">${code}</div>
+        <div>
+          <div class="tr-sym">${t.symbol || '?'} <span class="tr-side">${(t.direction || '').toUpperCase()}</span></div>
+          <div class="tr-time">${t.closed_at ? new Date(t.closed_at).toLocaleTimeString() : 'abierto'} · ${t.strategy || '—'}</div>
+        </div>
+        <div class="tr-pnl ${pnlCls}">${fmt$(pnl)}</div>
+        <div class="tr-time">${t.pnl_r ? (t.pnl_r>=0?'+':'')+Number(t.pnl_r).toFixed(2)+'R' : ''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderUsers(){
+    const list = $('userList');
+    $('us-count').textContent = users.length;
+    if (users.length === 0) { list.innerHTML = '<div class="tr-empty">Sin usuarios activos.</div>'; return; }
+
+    list.innerHTML = users.map(u => {
+      const s = states[u.id] || {};
+      const online = isOnline(s.last_heartbeat_at);
+      const killed = s.kill_switch_active;
+      const code = userCode(u.email);
+      const lastPing = timeAgo(s.last_heartbeat_at);
+      const bal = +s.balance || +u.initial_capital || 0;
+      const wr = 0; // calcular con trades_closed cuando haya
+      return `<div class="user-row ${online ? 'online' : 'offline'}" onclick="openUserModal('${u.id}')">
+        <div class="status-dot"></div>
+        <div class="user-info">
+          <div class="user-name ${killed ? 'paused' : ''}">
+            <span class="play">${killed ? '⏸' : '▶'}</span>
+            ${code}
+          </div>
+          <div class="user-meta">${u.email} · balance ${fmt$(bal)} · ${online ? 'último ping '+lastPing : 'offline'}</div>
+        </div>
+        <div class="user-stats">
+          <div class="user-balance">${fmt$(+s.daily_pnl||0)}</div>
+          <div class="user-wr">${s.open_positions?.length||0} pos · hoy</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderServer(lastVer){
+    const total = users.length;
+    const online = users.filter(u => isOnline(states[u.id]?.last_heartbeat_at)).length;
+    $('srv-online').textContent = `${online}/${total}`;
+    $('srv-botglobal').textContent = online === 0 ? '⏸ Pausado' : '▶ Activo';
+    $('srv-botglobal').style.color = online === 0 ? 'var(--amber)' : 'var(--neon)';
+    $('srv-lastver').textContent = lastVer ? 'v'+lastVer.version : '—';
+    $('curr-ver').textContent = lastVer ? 'v'+lastVer.version : 'v—';
+  }
+
+  // ===== USER DETAIL MODAL =====
+  window.openUserModal = function(uid){
+    const u = users.find(x => x.id === uid); if (!u) return;
+    const s = states[uid] || {};
+    const online = isOnline(s.last_heartbeat_at);
+    const code = userCode(u.email);
+    const se = s.strategies_enabled || { XAUUSD:true, EURUSD:true, US500:true };
+
+    $('userModalContent').innerHTML = `
+      <div class="modal-header">
+        <div>
+          <div style="font-family:'Bricolage Grotesque'; font-size:20px; font-weight:800; letter-spacing:0.08em;">${code}</div>
+          <div style="font-size:11px; color:var(--ink-3); margin-top:3px;">${u.email}</div>
+        </div>
+        <button class="modal-close" onclick="closeUserModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:20px;">
+        <div class="stat"><div class="lab">Estado</div><div class="val" style="font-size:18px; color:${online?'var(--neon)':'var(--ink-3)'};">${online?'Online':'Offline'}</div><div class="sub">ping ${timeAgo(s.last_heartbeat_at)}</div></div>
+        <div class="stat"><div class="lab">Balance</div><div class="val neon" style="font-size:18px;">${fmt$(+s.balance||+u.initial_capital)}</div></div>
+        <div class="stat"><div class="lab">Equity</div><div class="val" style="font-size:18px;">${fmt$(+s.equity||0)}</div></div>
+        <div class="stat"><div class="lab">P&L hoy</div><div class="val ${(+s.daily_pnl||0)>=0?'neon':'danger'}" style="font-size:18px;">${fmt$(+s.daily_pnl||0)}</div></div>
+      </div>
+
+      <div class="sec-label">Estrategias</div>
+      <div class="strat-pills" style="margin-bottom:20px;">
+        ${['XAUUSD','EURUSD','US500'].map(sym => {
+          const on = se[sym] !== false;
+          return `<button class="strat-pill ${on?'':'off'}" onclick="toggleStrat('${uid}','${sym}',${on})">${sym} ${on?'●':'○'}</button>`;
+        }).join('')}
+      </div>
+
+      <div class="sec-label">Acciones</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        ${s.kill_switch_active
+          ? `<button class="btn btn-primary" onclick="sendCommand('${uid}','reactivate')">▶ Reactivar</button>`
+          : `<button class="btn btn-danger" onclick="sendCommand('${uid}','kill_switch')">⏹ Kill switch</button>`}
+        <button class="btn btn-ghost" onclick="refreshUserDetail('${uid}')">↻ Refrescar</button>
+      </div>
+    `;
+    $('userModal').classList.add('open');
+  };
+  window.closeUserModal = () => $('userModal').classList.remove('open');
+  window.refreshUserDetail = async (uid) => { await refreshAll(); openUserModal(uid); };
+
+  window.toggleStrat = async function(uid, sym, currentlyOn){
+    await sendCommand(uid, currentlyOn ? 'pause_strategy' : 'resume_strategy', { symbol: sym });
+    setTimeout(()=>{ refreshUserDetail(uid); }, 800);
+  };
+
+  window.sendCommand = async function(uid, type, payload){
+    try {
+      const { error } = await supa.from('commands').insert({
+        user_id: uid,
+        command_type: type,
+        payload: payload || {},
+        status: 'pending',
+        issued_by: currentUser.id,
+      });
+      if (error) throw error;
+      toast(`Comando enviado: ${type}`);
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  };
+
+  window.controlAll = async function(action){
+    if (!confirm(action === 'kill' ? '¿Detener TODOS los bots? Esto cerrará posiciones.' : '¿Reactivar TODOS los bots?')) return;
+    const cmd = action === 'kill' ? 'kill_switch' : 'reactivate';
+    const msg = action === 'kill' ? 'Kill enviado a todos' : 'Reactivación enviada a todos';
+    try {
+      const rows = users.map(u => ({
+        user_id: u.id,
+        command_type: cmd,
+        payload: {},
+        status: 'pending',
+        issued_by: currentUser.id,
+      }));
+      const { error } = await supa.from('commands').insert(rows);
+      if (error) throw error;
+      toast(msg);
+      setTimeout(refreshAll, 2000);
+    } catch (e) {
+      toast('Error: ' + e.message, 'error');
+    }
+  };
+
+  // ===== TABS =====
+  document.querySelectorAll('.tab').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      currentTab = b.dataset.tab;
+      renderTrades();
+    });
+  });
+
+  // ===== AUTO-UPDATE =====
+  const drop = $('fileDrop');
+  const fileInput = $('up-file');
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f) { pendingFile = f; updateDropUI(); }
+  });
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) { pendingFile = f; updateDropUI(); }
+  });
+
+  function updateDropUI(){
+    if (!pendingFile) return;
+    const size = (pendingFile.size/1024/1024).toFixed(2);
+    $('fileDropTxt').innerHTML = `<span class="file-picked">${pendingFile.name}</span>`;
+    drop.querySelector('.sub').textContent = `${size} MB · listo para subir`;
+  }
+
+  window.uploadUpdate = async function(){
+    const ver = $('up-ver').value.trim();
+    const notes = $('up-notes').value.trim();
+    if (!ver) { toast('Poné una versión (ej: 13.1.0)', 'error'); return; }
+    if (!pendingFile) { toast('Seleccioná un archivo', 'error'); return; }
+    if (pendingFile.size > 50*1024*1024) { toast('Archivo muy grande (>50MB). Subilo a GitHub Release y pegá la URL.', 'error'); return; }
+
+    $('upload-btn-txt').innerHTML = '<span class="spin"></span> Subiendo…';
+    $('btn-upload').disabled = true;
+    try {
+      // Upload to Supabase Storage bucket "updates"
+      const path = `v${ver}/${pendingFile.name}`;
+      const { data: upData, error: upErr } = await supa.storage.from('updates').upload(path, pendingFile, { upsert: true });
+      if (upErr) throw upErr;
+
+      // Get public URL (if bucket is public) OR signed URL (if private)
+      const { data: urlData } = supa.storage.from('updates').getPublicUrl(path);
+      const file_url = urlData.publicUrl;
+
+      // Record in bot_updates table
+      const { error: insErr } = await supa.from('bot_updates').insert({
+        version: ver,
+        release_notes: notes || null,
+        file_url,
+        file_name: pendingFile.name,
+        file_size: pendingFile.size,
+        uploaded_by: currentUser.id,
+      });
+      if (insErr) throw insErr;
+
+      toast(`✓ v${ver} subida · los bots se actualizarán al reiniciar`);
+      $('up-ver').value = '';
+      $('up-notes').value = '';
+      pendingFile = null;
+      $('fileDropTxt').textContent = 'Soltá un archivo aquí o hacé click';
+      drop.querySelector('.sub').textContent = 'ZIP con main.py, web_server.py, server_client.py…';
+      fileInput.value = '';
+      refreshAll();
+    } catch (e) {
+      toast('Error subiendo: ' + e.message, 'error');
+      console.error(e);
+    } finally {
+      $('upload-btn-txt').textContent = '↑ Subir update';
+      $('btn-upload').disabled = false;
+    }
+  };
+
+  // ===== EVENTS =====
+  $('btn-login').addEventListener('click', doLogin);
+  $('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') $('login-pass').focus(); });
+
+  // ===== INIT =====
+  init();
+})();
+</script>
+
+</body>
+</html>
